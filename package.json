@@ -1,0 +1,29 @@
+{
+  "name": "abduulbot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "อับดุล - LINE bot ที่ตอบยอดรายได้รายวันของ Wise Dental Clinic จากระบบ Cliniter",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "check:income": "node --experimental-strip-types scripts/check-income.ts",
+    "debug:dump": "node --experimental-strip-types scripts/debug-fetch.ts"
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^9.5.0",
+    "cheerio": "^1.0.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}

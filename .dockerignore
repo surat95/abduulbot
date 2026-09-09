@@ -1,0 +1,10 @@
+node_modules
+dist
+debug-output
+.env
+.env.*
+.git
+.gitignore
+*.log
+test
+scripts
