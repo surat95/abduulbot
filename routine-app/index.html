@@ -1,0 +1,456 @@
+<title>Routine Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: single mobile column, sticky date strip on top, day split into time-of-day blocks, fixed bottom tab bar */
+:root {
+  --bg: #F3F6F4;
+  --surface: #FFFFFF;
+  --ink: #15312E;
+  --muted: #5E7470;
+  --line: #DCE5E1;
+  --accent: #0F7A68;
+  --accent-soft: #D7EEE8;
+  --sun: #E39B2E;
+  --sun-soft: #FBEBD2;
+  --danger: #B5402F;
+  --shadow: 0 1px 2px rgba(21,49,46,.06), 0 6px 20px rgba(21,49,46,.06);
+  --font-display: "Bai Jamjuree", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1816; --surface: #16231F; --ink: #E6F0EC; --muted: #93A9A3; --line: #26362F;
+  --accent: #4FC2A9; --accent-soft: #19362F; --sun: #F0B357; --sun-soft: #3A2C14; --danger: #E57B69;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0E1816; --surface: #16231F; --ink: #E6F0EC; --muted: #93A9A3; --line: #26362F;
+  --accent: #4FC2A9; --accent-soft: #19362F; --sun: #F0B357; --sun-soft: #3A2C14; --danger: #E57B69;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark }
+
+* { box-sizing: border-box }
+html, body { height: 100% }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); -webkit-tap-highlight-color: transparent }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+button { font: inherit; color: inherit; cursor: pointer }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.wrap { max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 calc(96px + env(safe-area-inset-bottom, 0px)) }
+
+/* header */
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 14px 10px }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px }
+.top h1 { margin: 0; font: 700 1.6rem/1.15 var(--font-display); text-wrap: balance }
+.top .sub { color: var(--muted); font-size: .85rem }
+.ring { position: relative; width: 58px; height: 58px; flex: none }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg) }
+.ring .num { position: absolute; inset: 0; display: grid; place-items: center; font: 700 .95rem var(--font-display); font-variant-numeric: tabular-nums }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px }
+.day { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 6px 0 7px; display: grid; justify-items: center; gap: 2px }
+.day small { font-size: .7rem; color: var(--muted) }
+.day b { font: 600 1rem var(--font-display); font-variant-numeric: tabular-nums }
+.day i { width: 6px; height: 6px; border-radius: 50%; background: var(--line) }
+.day i.full { background: var(--accent) } .day i.part { background: var(--sun) }
+.day[aria-current="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg) }
+.day[aria-current="true"] small { color: inherit; opacity: .75 }
+
+.banner { display: flex; gap: 10px; align-items: center; justify-content: space-between; background: var(--sun-soft); border-radius: 12px; padding: 10px 12px; font-size: .85rem; margin-top: 6px }
+.banner button { border: 0; background: none; color: var(--ink); text-decoration: underline; padding: 0; white-space: nowrap }
+
+/* routine list */
+.period { margin-top: 20px }
+.period h2 { margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; font: 600 .78rem var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
+.period h2 span { font-variant-numeric: tabular-nums }
+.list { display: grid; gap: 8px }
+.item { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; background: var(--surface); border-radius: var(--r); padding: 10px 10px 10px 12px; box-shadow: var(--shadow) }
+.check { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line); background: transparent; display: grid; place-items: center; transition: background .15s, border-color .15s }
+.check svg { width: 20px; height: 20px; opacity: 0; stroke: var(--surface) }
+.item.done .check { background: var(--accent); border-color: var(--accent) }
+.item.done .check svg { opacity: 1 }
+.meta { min-width: 0 }
+.meta .name { font-weight: 600; overflow-wrap: anywhere }
+.item.done .name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line) }
+.meta .info { font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; font-variant-numeric: tabular-nums }
+.tag { color: var(--sun); font-weight: 600 }
+.cam { width: 52px; height: 52px; border-radius: 12px; border: 1.5px dashed var(--line); background: var(--bg); display: grid; place-items: center; padding: 0; overflow: hidden; color: var(--muted) }
+.cam img { width: 100%; height: 100%; object-fit: cover; display: block }
+.cam.has { border: 0 }
+.cam svg { width: 22px; height: 22px }
+.item.need:not(.has-photo) .cam { border-color: var(--sun); color: var(--sun) }
+
+.empty { text-align: center; color: var(--muted); padding: 40px 12px }
+
+/* history */
+.section-title { font: 600 1.15rem var(--font-display); margin: 22px 0 10px }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.stat { background: var(--surface); border-radius: var(--r); padding: 12px; box-shadow: var(--shadow) }
+.stat b { display: block; font: 700 1.5rem var(--font-display); font-variant-numeric: tabular-nums }
+.stat small { color: var(--muted); font-size: .78rem }
+.heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px }
+.heat .hd { font-size: .7rem; color: var(--muted); text-align: center }
+.cell { aspect-ratio: 1; max-width: 100%; border-radius: 7px; border: 0; background: var(--line); font-size: .7rem; color: var(--ink); font-variant-numeric: tabular-nums; padding: 0 }
+.cell.l1 { background: var(--accent-soft) } .cell.l2 { background: color-mix(in srgb, var(--accent) 55%, var(--accent-soft)) ; color: var(--surface) } .cell.l3 { background: var(--accent); color: var(--surface) }
+.cell.future { background: transparent; border: 1px dashed var(--line); color: var(--muted) }
+.legend { display: flex; gap: 6px; align-items: center; justify-content: flex-end; font-size: .72rem; color: var(--muted); margin-top: 8px }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block }
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px }
+.gallery button { position: relative; aspect-ratio: 1; max-width: 100%; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--line) }
+.gallery img { width: 100%; height: 100%; object-fit: cover; display: block }
+.gallery span { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 4px; font-size: .68rem; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.6)); text-align: left }
+
+/* manage */
+.row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; background: var(--surface); border-radius: var(--r); padding: 12px; box-shadow: var(--shadow) }
+.row .info { font-size: .8rem; color: var(--muted) }
+.btn { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; background: var(--accent); color: var(--surface) }
+.btn.ghost { background: var(--accent-soft); color: var(--accent) }
+.btn.danger { background: transparent; color: var(--danger); padding-inline: 4px }
+.btn.small { padding: 8px 12px; font-size: .85rem }
+.full { width: 100%; margin-top: 12px }
+
+/* tabbar */
+nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px) }
+nav .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr) }
+nav button { border: 0; background: none; padding: 9px 0 10px; display: grid; justify-items: center; gap: 2px; font-size: .74rem; color: var(--muted) }
+nav button svg { width: 22px; height: 22px }
+nav button[aria-current="true"] { color: var(--accent); font-weight: 600 }
+
+/* sheet + viewer */
+.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(8,20,18,.55); display: flex; align-items: flex-end; justify-content: center }
+.sheet { width: 100%; max-width: 520px; max-height: 92%; overflow: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)) }
+.sheet h3 { margin: 0 0 12px; font: 600 1.2rem var(--font-display) }
+.field { display: grid; gap: 4px; margin-bottom: 12px }
+.field label { font-size: .8rem; color: var(--muted) }
+.field input, .field select, .field textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100% }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.switch { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: .92rem }
+.switch input { width: 20px; height: 20px; accent-color: var(--accent) }
+.actions { display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 6px }
+.photo-big { width: 100%; border-radius: 12px; display: block; max-height: 55vh; object-fit: contain; background: var(--bg) }
+.toast { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: .88rem; white-space: nowrap }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap" id="app"></div>
+<nav aria-label="เมนูหลัก"><div class="in">
+  <button data-tab="today" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M8.5 15l2 2 4-4"/></svg>วันนี้</button>
+  <button data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>ประวัติ</button>
+  <button data-tab="manage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/></svg>รูทีนของฉัน</button>
+</div></nav>
+<input type="file" id="picker" accept="image/*" capture="environment" hidden>
+
+<script>
+(() => {
+  // ---------- storage (localStorage for data, IndexedDB for photos; both optional) ----------
+  const KEY = "routine-tracker-v1";
+  const store = {
+    load() { try { return JSON.parse(localStorage.getItem(KEY)) } catch { return null } },
+    save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)) } catch {} }
+  };
+  const memPhotos = new Map();
+  let dbp = null;
+  function db() {
+    if (dbp) return dbp;
+    dbp = new Promise((res) => {
+      try {
+        const r = indexedDB.open("routine-photos", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("p");
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => res(null);
+      } catch { res(null) }
+    });
+    return dbp;
+  }
+  async function putPhoto(id, dataUrl) {
+    memPhotos.set(id, dataUrl);
+    const d = await db(); if (!d) return;
+    try { d.transaction("p", "readwrite").objectStore("p").put(dataUrl, id) } catch {}
+  }
+  async function getPhoto(id) {
+    if (memPhotos.has(id)) return memPhotos.get(id);
+    const d = await db(); if (!d) return null;
+    return new Promise((res) => {
+      try {
+        const q = d.transaction("p").objectStore("p").get(id);
+        q.onsuccess = () => { if (q.result) memPhotos.set(id, q.result); res(q.result || null) };
+        q.onerror = () => res(null);
+      } catch { res(null) }
+    });
+  }
+  async function delPhoto(id) {
+    memPhotos.delete(id);
+    const d = await db(); if (!d) return;
+    try { d.transaction("p", "readwrite").objectStore("p").delete(id) } catch {}
+  }
+
+  // ---------- dates ----------
+  const pad = (n) => String(n).padStart(2, "0");
+  const key = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const fromKey = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d) };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
+  const TODAY = key(new Date());
+  const DOW = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+  const MONTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+  const DAYNAME = ["วันอาทิตย์", "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์"];
+  const thaiDate = (k) => { const d = fromKey(k); return `${DAYNAME[d.getDay()]}ที่ ${d.getDate()} ${MONTH[d.getMonth()]} ${d.getFullYear() + 543}` };
+  const hhmm = (ts) => { const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+
+  const PERIODS = [
+    { id: "morning", label: "เช้า", range: "05:00–11:59" },
+    { id: "afternoon", label: "บ่าย", range: "12:00–16:59" },
+    { id: "evening", label: "เย็น", range: "17:00–20:59" },
+    { id: "night", label: "ก่อนนอน", range: "21:00 เป็นต้นไป" }
+  ];
+  const periodOf = (t) => { const h = +t.slice(0, 2); return h < 5 ? "night" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night" };
+  const uid = () => Math.random().toString(36).slice(2, 10);
+
+  // ---------- state ----------
+  function sample() {
+    const routines = [
+      { id: "r1", name: "ดื่มน้ำ 1 แก้วหลังตื่นนอน", time: "06:00", photo: false },
+      { id: "r2", name: "ออกกำลังกาย 30 นาที", time: "06:30", photo: true },
+      { id: "r3", name: "อาหารเช้า", time: "07:30", photo: true },
+      { id: "r4", name: "ทานวิตามิน", time: "12:30", photo: false },
+      { id: "r5", name: "เดินหลังอาหารเย็น 15 นาที", time: "18:30", photo: false },
+      { id: "r6", name: "แปรงฟัน + ใช้ไหมขัดฟัน", time: "21:30", photo: false },
+      { id: "r7", name: "อ่านหนังสือ 20 หน้า", time: "21:45", photo: true },
+      { id: "r8", name: "เข้านอนก่อน 23:00", time: "22:30", photo: false }
+    ];
+    const logs = {};
+    const base = new Date();
+    for (let i = 1; i <= 30; i++) {
+      const k = key(addDays(base, -i)), day = {};
+      routines.forEach((r, j) => {
+        const v = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453;
+        if (v - Math.floor(v) < 0.78) day[r.id] = { at: addDays(base, -i).setHours(+r.time.slice(0, 2), +r.time.slice(3) + 5), sample: true };
+      });
+      logs[k] = day;
+    }
+    logs[TODAY] = { r1: { at: new Date().setHours(6, 4) } };
+    return { routines, logs, sample: true };
+  }
+  let S = store.load() || sample();
+  const save = () => store.save(S);
+  let tab = "today", sel = TODAY;
+  try { const t = sessionStorage.getItem("rt-tab"); if (t) tab = t } catch {}
+
+  const active = () => [...S.routines].sort((a, b) => a.time.localeCompare(b.time));
+  const dayLog = (k) => S.logs[k] || {};
+  const pct = (k) => { const r = S.routines.length; if (!r) return 0; const l = dayLog(k); return S.routines.filter((x) => l[x.id]).length / r };
+
+  // ---------- render ----------
+  const app = document.getElementById("app");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+
+  function render() {
+    document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.tab === tab));
+    if (tab === "today") renderToday();
+    else if (tab === "history") renderHistory();
+    else renderManage();
+  }
+
+  function sampleBanner() {
+    return S.sample ? `<div class="banner"><span>นี่คือข้อมูลตัวอย่าง ลองติ๊กหรือถ่ายรูปดูได้เลย</span><button id="clear-sample">เริ่มใช้งานจริง</button></div>` : "";
+  }
+
+  function renderToday() {
+    const p = pct(sel), C = 2 * Math.PI * 24;
+    const sd = fromKey(sel), start = addDays(sd, -((sd.getDay() + 6) % 7));
+    const week = Array.from({ length: 7 }, (_, i) => addDays(start, i)).map((d) => {
+      const k = key(d), v = pct(k), fut = k > TODAY;
+      return `<button class="day" data-day="${k}" aria-current="${k === sel}" ${fut ? "disabled" : ""}><small>${DOW[d.getDay()]}</small><b>${d.getDate()}</b><i class="${fut ? "" : v >= 1 ? "full" : v > 0 ? "part" : ""}"></i></button>`;
+    }).join("");
+    const log = dayLog(sel), list = active();
+    const body = list.length ? PERIODS.map((per) => {
+      const items = list.filter((r) => periodOf(r.time) === per.id);
+      if (!items.length) return "";
+      const done = items.filter((r) => log[r.id]).length;
+      return `<section class="period"><h2>${per.label} <span>${done}/${items.length}</span></h2><div class="list">${items.map((r) => {
+        const e = log[r.id];
+        return `<div class="item ${e ? "done" : ""} ${r.photo ? "need" : ""} ${e && e.photo ? "has-photo" : ""}" data-id="${r.id}">
+          <button class="check" data-act="toggle" aria-label="${e ? "ยกเลิก" : "ทำแล้ว"}: ${esc(r.name)}">${ICON_CHECK}</button>
+          <div class="meta"><div class="name">${esc(r.name)}</div><div class="info"><span>${r.time} น.</span>${e ? `<span>ทำเมื่อ ${hhmm(e.at)}</span>` : ""}${r.photo && !(e && e.photo) ? '<span class="tag">ต้องมีรูป</span>' : ""}${e && e.note ? `<span>“${esc(e.note)}”</span>` : ""}</div></div>
+          <button class="cam ${e && e.photo ? "has" : ""}" data-act="${e && e.photo ? "view" : "shoot"}" aria-label="${e && e.photo ? "ดูรูป" : "ถ่ายรูปแนบ"}">${e && e.photo ? `<img data-photo="${e.photo}" alt="">` : ICON_CAM}</button>
+        </div>`;
+      }).join("")}</div></section>`;
+    }).join("") : `<div class="empty">ยังไม่มีรูทีน<br><button class="btn full" data-goto="manage">เพิ่มรูทีนแรก</button></div>`;
+
+    app.innerHTML = `<header>
+      <div class="top"><div><div class="sub">${sel === TODAY ? "วันนี้" : "ย้อนหลัง"}</div><h1>${thaiDate(sel)}</h1></div>
+        <div class="ring" aria-label="สำเร็จ ${Math.round(p * 100)}%"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="24" fill="none" stroke="var(--line)" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" stroke="${p >= 1 ? "var(--accent)" : "var(--sun)"}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p)}"/></svg><div class="num">${Math.round(p * 100)}%</div></div></div>
+      <div class="week">${week}</div>${sampleBanner()}</header>${body}`;
+    hydratePhotos();
+  }
+
+  function streak() {
+    let n = 0, d = new Date();
+    if (pct(key(d)) < 0.8) d = addDays(d, -1);
+    while (S.routines.length && pct(key(d)) >= 0.8 && n < 999) { n++; d = addDays(d, -1) }
+    return n;
+  }
+
+  function renderHistory() {
+    const t = fromKey(TODAY), start = addDays(t, -((t.getDay() + 6) % 7) - 28);
+    const cells = Array.from({ length: 35 }, (_, i) => addDays(start, i)).map((d) => {
+      const k = key(d);
+      if (k > TODAY) return `<button class="cell future" disabled>${d.getDate()}</button>`;
+      const v = pct(k), l = v >= 1 ? 3 : v >= 0.7 ? 2 : v > 0 ? 1 : 0;
+      return `<button class="cell l${l}" data-day="${k}" aria-label="${thaiDate(k)} ${Math.round(v * 100)}%">${d.getDate()}</button>`;
+    }).join("");
+    const last7 = Array.from({ length: 7 }, (_, i) => pct(key(addDays(t, -i))));
+    const avg = Math.round(last7.reduce((a, b) => a + b, 0) / 7 * 100);
+    const photos = [];
+    Object.keys(S.logs).sort().reverse().forEach((k) => S.routines.forEach((r) => { const e = S.logs[k][r.id]; if (e && e.photo) photos.push({ k, r, e }) }));
+    const perfect = Object.keys(S.logs).filter((k) => pct(k) >= 1).length;
+    app.innerHTML = `<header><div class="top"><div><div class="sub">ภาพรวม</div><h1>ประวัติ</h1></div></div>${sampleBanner()}</header>
+      <div class="stats"><div class="stat"><b>${streak()}</b><small>วันติดกัน (≥80%)</small></div><div class="stat"><b>${avg}%</b><small>เฉลี่ย 7 วัน</small></div><div class="stat"><b>${perfect}</b><small>วันที่ทำครบ</small></div></div>
+      <div class="section-title">5 สัปดาห์ล่าสุด</div>
+      <div class="heat">${["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"].map((x) => `<div class="hd">${x}</div>`).join("")}${cells}</div>
+      <div class="legend">น้อย <i style="background:var(--line)"></i><i style="background:var(--accent-soft)"></i><i style="background:color-mix(in srgb, var(--accent) 55%, var(--accent-soft))"></i><i style="background:var(--accent)"></i> ครบ</div>
+      <div class="section-title">รูปที่แนบไว้ (${photos.length})</div>
+      ${photos.length ? `<div class="gallery">${photos.map(({ k, r, e }) => `<button data-view="${k}|${r.id}"><img data-photo="${e.photo}" alt="${esc(r.name)}"><span>${fromKey(k).getDate()} ${MONTH[fromKey(k).getMonth()]} · ${esc(r.name)}</span></button>`).join("")}</div>` : `<div class="empty">ยังไม่มีรูป กดไอคอนกล้องข้างรูทีนในหน้า “วันนี้” เพื่อถ่ายรูปแนบ</div>`}`;
+    hydratePhotos();
+  }
+
+  function renderManage() {
+    const list = active();
+    app.innerHTML = `<header><div class="top"><div><div class="sub">${list.length} รายการ</div><h1>รูทีนของฉัน</h1></div><button class="btn small" data-act="add">+ เพิ่ม</button></div>${sampleBanner()}</header>
+      <div class="list" style="margin-top:12px">${list.map((r) => `<div class="row"><div><div style="font-weight:600">${esc(r.name)}</div><div class="info">${r.time} น. · ${PERIODS.find((p) => p.id === periodOf(r.time)).label}${r.photo ? " · ต้องถ่ายรูป" : ""}</div></div><button class="btn ghost small" data-edit="${r.id}">แก้ไข</button></div>`).join("") || '<div class="empty">ยังไม่มีรูทีน</div>'}</div>
+      <button class="btn ghost full" data-act="add">+ เพิ่มรูทีนใหม่</button>`;
+  }
+
+  async function hydratePhotos() {
+    for (const img of app.querySelectorAll("img[data-photo]")) {
+      const src = await getPhoto(img.dataset.photo);
+      if (src) img.src = src;
+    }
+  }
+
+  // ---------- overlays ----------
+  function sheet(html, bind) {
+    const s = document.createElement("div");
+    s.className = "scrim";
+    s.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+    s.addEventListener("click", (e) => { if (e.target === s || e.target.closest("[data-close]")) s.remove() });
+    document.body.appendChild(s);
+    bind && bind(s.querySelector(".sheet"), () => s.remove());
+    const f = s.querySelector("input,button"); f && f.focus();
+  }
+  function toast(msg) {
+    const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 1800);
+  }
+
+  function editRoutine(r) {
+    const isNew = !r; r = r || { id: uid(), name: "", time: "07:00", photo: false };
+    sheet(`<h3>${isNew ? "เพิ่มรูทีน" : "แก้ไขรูทีน"}</h3>
+      <form id="rf">
+        <div class="field"><label for="rf-name">ชื่อรูทีน</label><input id="rf-name" required maxlength="60" value="${esc(r.name)}" placeholder="เช่น นั่งสมาธิ 10 นาที"></div>
+        <div class="field"><label for="rf-time">เวลา</label><input id="rf-time" type="time" required value="${r.time}"></div>
+        <label class="switch"><input type="checkbox" id="rf-photo" ${r.photo ? "checked" : ""}> ต้องถ่ายรูปเป็นหลักฐาน</label>
+        <div class="actions">${isNew ? "<span></span>" : '<button type="button" class="btn danger" id="rf-del">ลบรูทีนนี้</button>'}<div style="display:flex;gap:8px"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button class="btn">บันทึก</button></div></div>
+      </form>`, (el, close) => {
+      el.querySelector("#rf").addEventListener("submit", (e) => {
+        e.preventDefault();
+        r.name = el.querySelector("#rf-name").value.trim();
+        r.time = el.querySelector("#rf-time").value;
+        r.photo = el.querySelector("#rf-photo").checked;
+        if (!r.name) return;
+        if (isNew) S.routines.push(r);
+        save(); close(); render(); toast(isNew ? "เพิ่มรูทีนแล้ว" : "บันทึกแล้ว");
+      });
+      const del = el.querySelector("#rf-del");
+      del && del.addEventListener("click", () => {
+        if (del.dataset.armed) {
+          S.routines = S.routines.filter((x) => x.id !== r.id); save(); close(); render(); toast("ลบรูทีนแล้ว");
+        } else { del.dataset.armed = 1; del.textContent = "กดอีกครั้งเพื่อยืนยันลบ" }
+      });
+    });
+  }
+
+  async function viewPhoto(k, rid) {
+    const r = S.routines.find((x) => x.id === rid), e = (S.logs[k] || {})[rid];
+    if (!r || !e) return;
+    const src = await getPhoto(e.photo);
+    sheet(`<h3>${esc(r.name)}</h3>
+      <div class="info" style="color:var(--muted);font-size:.85rem;margin-bottom:10px">${thaiDate(k)} · ${hhmm(e.at)} น.</div>
+      ${src ? `<img class="photo-big" src="${src}" alt="${esc(r.name)}">` : '<div class="empty">ไม่พบไฟล์รูปในเครื่องนี้</div>'}
+      <div class="field" style="margin-top:12px"><label for="pv-note">โน้ต</label><input id="pv-note" maxlength="80" value="${esc(e.note || "")}" placeholder="เช่น วิ่ง 5 กม."></div>
+      <div class="actions"><button class="btn danger" id="pv-del">ลบรูป</button><div style="display:flex;gap:8px"><button class="btn ghost" id="pv-re">ถ่ายใหม่</button><button class="btn" id="pv-ok">เสร็จ</button></div></div>`, (el, close) => {
+      const keepNote = () => { e.note = el.querySelector("#pv-note").value.trim(); save() };
+      el.querySelector("#pv-ok").onclick = () => { keepNote(); close(); render() };
+      el.querySelector("#pv-re").onclick = () => { keepNote(); close(); shoot(k, rid) };
+      el.querySelector("#pv-del").onclick = async () => { await delPhoto(e.photo); delete e.photo; keepNote(); close(); render(); toast("ลบรูปแล้ว") };
+    });
+  }
+
+  // ---------- photo capture ----------
+  const picker = document.getElementById("picker");
+  let pending = null;
+  function shoot(k, rid) { pending = { k, rid }; picker.value = ""; picker.click() }
+  picker.addEventListener("change", async () => {
+    const f = picker.files && picker.files[0]; if (!f || !pending) return;
+    const { k, rid } = pending; pending = null;
+    try {
+      const dataUrl = await shrink(f, 1280, 0.82);
+      const id = `${k}-${rid}-${Date.now()}`;
+      await putPhoto(id, dataUrl);
+      S.logs[k] = S.logs[k] || {};
+      const old = S.logs[k][rid];
+      if (old && old.photo) delPhoto(old.photo);
+      S.logs[k][rid] = { ...(old || {}), at: old ? old.at : Date.now(), photo: id };
+      save(); render(); toast("แนบรูปและติ๊กว่าทำแล้ว");
+    } catch { toast("เปิดไฟล์รูปนี้ไม่ได้ ลองเลือกรูป JPG หรือ PNG") }
+  });
+  function shrink(file, max, q) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", q));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej() };
+      img.src = url;
+    });
+  }
+
+  // ---------- events ----------
+  document.querySelector("nav").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tab]"); if (!b) return;
+    tab = b.dataset.tab; try { sessionStorage.setItem("rt-tab", tab) } catch {}
+    render(); window.scrollTo(0, 0);
+  });
+  app.addEventListener("click", async (e) => {
+    const t = e.target;
+    const day = t.closest("[data-day]");
+    if (day) { sel = day.dataset.day; tab = "today"; render(); return }
+    if (t.closest("#clear-sample")) {
+      S.logs = {}; S.sample = false; save(); render(); toast("ล้างข้อมูลตัวอย่างแล้ว รูทีนยังอยู่ แก้ไขได้ที่แท็บ “รูทีนของฉัน”"); return;
+    }
+    const go = t.closest("[data-goto]"); if (go) { tab = go.dataset.goto; render(); return }
+    const ed = t.closest("[data-edit]"); if (ed) { editRoutine(S.routines.find((r) => r.id === ed.dataset.edit)); return }
+    const v = t.closest("[data-view]"); if (v) { const [k, rid] = v.dataset.view.split("|"); viewPhoto(k, rid); return }
+    const act = t.closest("[data-act]"); if (!act) return;
+    if (act.dataset.act === "add") { editRoutine(); return }
+    const item = act.closest(".item"), rid = item && item.dataset.id;
+    if (act.dataset.act === "toggle") {
+      S.logs[sel] = S.logs[sel] || {};
+      const e0 = S.logs[sel][rid];
+      if (e0) { if (e0.photo) delPhoto(e0.photo); delete S.logs[sel][rid] }
+      else {
+        const r = S.routines.find((x) => x.id === rid);
+        S.logs[sel][rid] = { at: sel === TODAY ? Date.now() : fromKey(sel).setHours(+r.time.slice(0, 2), +r.time.slice(3)) };
+        if (r.photo) toast("รูทีนนี้ควรมีรูป กดไอคอนกล้องเพื่อแนบ");
+      }
+      save(); render();
+    } else if (act.dataset.act === "shoot") shoot(sel, rid);
+    else if (act.dataset.act === "view") viewPhoto(sel, rid);
+  });
+
+  render();
+})();
+</script>
